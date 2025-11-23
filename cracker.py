@@ -126,14 +126,7 @@ class PasswordCracker:
 
 if __name__ == "__main__":
     password_hash = "aeeff5df4d122b5926acd916bea10fbc9362bd21b16fe049a2b242d4e6a2af93e7974358da58ee31bdc17e12bd68a19a"
-    # heslo je "ahoj"
-    print(lower_case_alphabet)
-    print(upper_case_alphabet)
-    print(numbers)
-    print(special_characters)
-    for i in range(1, 3):
-        teststring = i * "a"
-        print(teststring)
+
 
 
 
