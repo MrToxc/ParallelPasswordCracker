@@ -1,50 +1,51 @@
-# Paralelní Password Cracker (Producer-Consumer)
+# Paralelní Password Cracker (Producer–Consumer)
 
 **Autor:** Václav Křivka  
 **Datum:** 24. 11. 2025  
 **Předmět:** Programové vybavení
 
-## Popis projektu
-Tato aplikace demonstruje řešení reálného problému (brute-force útok na hesla) s využitím **paralelního zpracování**. Problém je řešen pomocí návrhového vzoru **Producer-Consumer** (Producent-Konzument), který zajišťuje efektivní využití více jader procesoru a zabraňuje situacím typu *starvation* (hladovění procesů).
+---
 
-Aplikace se pokouší prolomit SHA-384 hash zadaného hesla generováním kombinací znaků.
+## Stručný popis
+Jednoduchý studentský projekt demonstrující paralelní brute-force útok proti **SHA-384** hashi pomocí více procesů (`multiprocessing`). Ukazuje rozdělení práce, synchronizaci přes `Queue` a sdílení výsledku přes `multiprocessing.Value` a `multiprocessing.Array`.
 
-## Architektura a paralelizace
-Řešení je rozděleno na dvě hlavní části komunikující přes `multiprocessing.Queue`:
+> **Poznámka:** Projekt je výukový — nevyužívej k nelegálnímým účelům.
 
-1.  **Process Manager (Producent):**
-    * Generuje rozsahy indexů (úkoly) pro danou délku hesla.
-    * Vkládá úkoly do sdílené fronty.
-    * Řídí životní cyklus workerů a zajišťuje synchronizaci.
-    * Na konci vkládá do fronty "Poison Pill" (`None`) pro korektní ukončení.
-
-2.  **Workers (Konzumenti):**
-    * Nezávislé procesy, které si odebírají práci z fronty.
-    * Provádí výpočetně náročné generování hesel a hashování.
-    * Při nalezení hesla uloží výsledek do sdílené paměti a signalizují ukončení ostatním procesům pomocí `finish_flag`.
+---
 
 ## Požadavky
-* Python 3.x
-* Standardní knihovny: `multiprocessing`, `hashlib`, `string`, `time`
-* Program nevyžaduje instalaci žádných externích balíčků.
+- Python 3.x  
+- Standardní knihovny: `multiprocessing`, `hashlib`, `string`, `time`, `sys`  
+- Žádné externí balíčky
 
-## Návod ke spuštění
-Program je navržen tak, aby byl spustitelný z příkazové řádky bez nutnosti IDE.
+---
 
-1.  Otevřete terminál (CMD/PowerShell/Bash) ve složce se skriptem.
-2.  Spusťte příkaz:
-    ```bash
-    python cracker.py
-    ```
+## Co program dělá
+1. Vytvoří množinu znaků podle konfigurace (malá/velká písmena, čísla, speciální znaky).  
+2. Generuje kombinace všech hesel od délky 1 do `max_chars`.  
+3. Rozdělí práci mezi N workerů — každý worker dostane svůj rozsah indexů (start/end).  
+4. Workery hashují každé generované heslo (`SHA-384`) a porovnávají s cílovým hashem.  
+5. Při nalezení hesla worker uloží výsledek do sdílené paměti a nastaví `finish_flag`; ostatní workery se ukončí po „poison pill“ (`None`).
 
-## Konfigurace
-Z důvodu optimalizace výkonu a jednoduchosti nasazení je konfigurace umístěna přímo v bloku `__main__` ve zdrojovém kódu. Pro změnu parametrů otevřete skript v libovolném textovém editoru a upravte sekci na konci souboru:
+---
 
-* **`password_hash`**: Cílový SHA-384 hash, který chcete prolomit.
-* **`args=(6, 4, queue)`**:
-    * První číslo (`6`): Maximální délka generovaného hesla.
-    * Druhé číslo (`4`): Počet paralelních procesů (doporučeno nastavit dle počtu jader CPU).
-* **Třída `PasswordCracker`**: Zde lze zapnout/vypnout sady znaků (`contains_lowercase`, `contains_numbers` atd.).
+## Struktura řešení
+- `PasswordCracker` — hlavní třída obsahující logiku pro generování, dělení práce a spuštění workerů.  
+- `process_manager` — producent; generuje úkoly `(symbols_count, start, end)` a vkládá je do `multiprocessing.Queue`.  
+- `worker_crack_password` — konzument; bere úkoly z fronty, generuje hesla, hashuje a porovnává.  
+- Sdílený stav:
+  - `finish_flag = multiprocessing.Value('i', 0)` — 0 = běží, 1 = nalezeno.  
+  - `final_password = multiprocessing.Array('c', 100)` — buffer pro nalezené heslo (padding nulami).
 
-## Ukázka běhu
-Program vypíše do konzole průběh startování workerů a po nalezení hesla (nebo vyčerpání možností) zobrazí výsledek a celkový čas výpočtu.
+---
+
+## Jak spustit
+1. Otevři terminál ve složce se skriptem `cracker.py`.  
+2. Spusť (výchozí hodnoty použity, pokud argumenty vynecháš):
+
+```bash
+# výchozí: max délka 5, 2 procesy, testovací hash
+python cracker.py
+
+# explicitně: <max_chars> <max_processes> <sha384_hash>
+python cracker.py 6 4 9e0133f2a13... (96 hex znaků)
