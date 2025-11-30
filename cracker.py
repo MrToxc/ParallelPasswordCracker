@@ -1,6 +1,7 @@
 import hashlib
 import multiprocessing
 import string
+import sys
 import time
 
 
@@ -26,6 +27,8 @@ class PasswordCracker:
                 self.final_char_set = final_char_set
             if target_hash != "":
                 self.hash_target = target_hash.strip().lower()
+            else:
+                raise ValueError("target_hash must be provided")
             self.finish_flag = multiprocessing.Value('i', 0)
             self.final_password = multiprocessing.Array('c', 100)
         else:
@@ -92,8 +95,10 @@ class PasswordCracker:
 
 
 
-    def process_manager(self, max_chars, max_processes, task_queue):
+    def process_manager(self, max_chars, max_processes):
 
+        self.finish_flag.value = 0
+        task_queue = multiprocessing.Queue()
 
         base, rem = divmod(len(self.final_char_set), max_processes)
         self.finish_flag.value = 0
@@ -124,25 +129,57 @@ class PasswordCracker:
         for process in processes:
             process.join()
 
-        if self.final_password != "":
-            print(f"Ulozene heslo je: {self.final_password.value.decode('utf-8')}")
+        if self.finish_flag.value == 1:
+            #print(f"Ulozene heslo je: {self.final_password.value.decode('utf-8')}")
             return self.final_password.value.decode('utf-8')
         print("Password not found")
         return None
 
 
 if __name__ == "__main__":
+    DEFAULT_HASH = "9e0133f2a137e8eb48b7f27c25f06a7f4f9a3410b045bfe6823246608d1ee827e31e38bde7cfdfcb8702741b60449a3a"
+    DEFAULT_MAX_CHARS = 5
+    DEFAULT_MAX_PROCESSES = 2
 
-    password_hash = "9e0133f2a137e8eb48b7f27c25f06a7f4f9a3410b045bfe6823246608d1ee827e31e38bde7cfdfcb8702741b60449a3a"
-    #ahojj
 
-    queue = multiprocessing.Queue()
+
+    try:
+        if len(sys.argv) > 1:
+            max_chars_input = int(sys.argv[1])
+        else:
+            max_chars_input = DEFAULT_MAX_CHARS
+    except ValueError:
+        print("Warning: max_chars není číslo, používám default:", DEFAULT_MAX_CHARS)
+        max_chars_input = DEFAULT_MAX_CHARS
+
+    try:
+        if len(sys.argv) > 2:
+            max_processes_input = int(sys.argv[2])
+        else:
+            max_processes_input = DEFAULT_MAX_PROCESSES
+    except ValueError:
+        print("Warning: max_processes není číslo, používám default:", DEFAULT_MAX_PROCESSES)
+        max_processes_input = DEFAULT_MAX_PROCESSES
+
+    if len(sys.argv) > 3 and sys.argv[3] != "None":
+        password_hash_input = sys.argv[3]
+    else:
+        password_hash_input = DEFAULT_HASH
+
+    if max_chars_input <= 0:
+        print("max_chars musí být > 0, používám:", DEFAULT_MAX_CHARS)
+        max_chars_input = DEFAULT_MAX_CHARS
+    if max_processes_input <= 0:
+        print("max_processes musí být > 0, používám:", DEFAULT_MAX_PROCESSES)
+        max_processes_input = DEFAULT_MAX_PROCESSES
+
     start = time.time()
-    Cracker = PasswordCracker(target_hash=password_hash)
-    p1 = multiprocessing.Process(target=Cracker.process_manager, args=(6, 4, queue,))
-    p1.start()
-    p1.join()
+    Cracker = PasswordCracker(target_hash=password_hash_input)
 
 
+    result = Cracker.process_manager(max_chars_input, max_processes_input)
     end = time.time()
-    print("Vypocet bez trval {:.6f} sec.".format((end - start)))
+
+    print("Výpočet trval {:.6f} sec.".format((end - start)))
+    if result:
+        print("Nalezené heslo:", result)
