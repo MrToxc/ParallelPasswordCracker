@@ -1,50 +1,41 @@
-# Paralelní Password Cracker (Producer-Consumer)
+# Paralelní Password Cracker — stručně pro uživatele
 
 **Autor:** Václav Křivka  
-**Datum:** 24. 11. 2025  
+**Datum:** 12. 7. 2025  
 **Předmět:** Programové vybavení
 
-## Popis projektu
-Tato aplikace demonstruje řešení reálného problému (brute-force útok na hesla) s využitím **paralelního zpracování**. Problém je řešen pomocí návrhového vzoru **Producer-Consumer** (Producent-Konzument), který zajišťuje efektivní využití více jader procesoru a zabraňuje situacím typu *starvation* (hladovění procesů).
+---
 
-Aplikace se pokouší prolomit SHA-384 hash zadaného hesla generováním kombinací znaků.
+## Krátký popis
+Program zkusí najít heslo porovnáním SHA-384 hashe pomocí více procesů najednou — určené pro testování vlastních hesel a ověření jejich slabosti.  
+Výstup je buď nalezené heslo, nebo informace, že heslo nebylo nalezeno.
 
-## Architektura a paralelizace
-Řešení je rozděleno na dvě hlavní části komunikující přes `multiprocessing.Queue`:
+**Důležité upozornění**  
+Používej pouze na vlastních datech nebo s jasným svolením. Zneužití k prolomení cizích účtů je nezákonné.
 
-1.  **Process Manager (Producent):**
-    * Generuje rozsahy indexů (úkoly) pro danou délku hesla.
-    * Vkládá úkoly do sdílené fronty.
-    * Řídí životní cyklus workerů a zajišťuje synchronizaci.
-    * Na konci vkládá do fronty "Poison Pill" (`None`) pro korektní ukončení.
+---
 
-2.  **Workers (Konzumenti):**
-    * Nezávislé procesy, které si odebírají práci z fronty.
-    * Provádí výpočetně náročné generování hesel a hashování.
-    * Při nalezení hesla uloží výsledek do sdílené paměti a signalizují ukončení ostatním procesům pomocí `finish_flag`.
+## Co program používá
+- Program může načíst vlastní znaky ze souboru `config.txt` (jeden řetězec všech znaků).  
+  Pokud soubor neexistuje, použije se kombinace podle zvolených přednastavených sad znaků.  
+- Výchozí nastavení lze přepsat argumenty při spuštění (max. délka, počet procesů, cílový hash, sady znaků).
 
-## Požadavky
-* Python 3.x
-* Standardní knihovny: `multiprocessing`, `hashlib`, `string`, `time`
-* Program nevyžaduje instalaci žádných externích balíčků.
+---
 
-## Návod ke spuštění
-Program je navržen tak, aby byl spustitelný z příkazové řádky bez nutnosti IDE.
+## Struktura příkazu (command)
+```bash
+python crack.py <max_chars> <max_processes> <sha384_hash> [char_sets...]
+```
 
-1.  Otevřete terminál (CMD/PowerShell/Bash) ve složce se skriptem.
-2.  Spusťte příkaz:
-    ```bash
-    python cracker.py
-    ```
+## Podporované sady znaků (charsety)
+Do příkazové řádky můžeš specifikovat tyto předdefinované sady (rozlišuje se velká/malá písmena):
 
-## Konfigurace
-Z důvodu optimalizace výkonu a jednoduchosti nasazení je konfigurace umístěna přímo v bloku `__main__` ve zdrojovém kódu. Pro změnu parametrů otevřete skript v libovolném textovém editoru a upravte sekci na konci souboru:
+- `letters` — malá písmena `a–z`  
+- `LETTERS` — velká písmena `A–Z`  
+- `numbers` — číslice `0–9`  
+- `special` — speciální znaky (podle `string.punctuation` v Pythonu)
 
-* **`password_hash`**: Cílový SHA-384 hash, který chcete prolomit.
-* **`args=(6, 4, queue)`**:
-    * První číslo (`6`): Maximální délka generovaného hesla.
-    * Druhé číslo (`4`): Počet paralelních procesů (doporučeno nastavit dle počtu jader CPU).
-* **Třída `PasswordCracker`**: Zde lze zapnout/vypnout sady znaků (`contains_lowercase`, `contains_numbers` atd.).
-
-## Ukázka běhu
-Program vypíše do konzole průběh startování workerů a po nalezení hesla (nebo vyčerpání možností) zobrazí výsledek a celkový čas výpočtu.
+Příklad:  
+```bash
+python crack.py 6 4 <sha384_hash> letters numbers special
+```
