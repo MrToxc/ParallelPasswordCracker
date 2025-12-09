@@ -16,8 +16,11 @@ DEFAULT_MAX_CHARS = 5
 DEFAULT_MAX_PROCESSES = 2
 CONFIG_FILEPATH = "config.txt"
 
+
+
+
 class PasswordCracker:
-    def __init__(self, max_chars = DEFAULT_MAX_CHARS, max_processes = DEFAULT_MAX_PROCESSES, target_hash = DEFAULT_HASH, character_types=None):
+    def __init__(self, max_chars = DEFAULT_MAX_CHARS, max_processes = DEFAULT_MAX_PROCESSES, target_hash = DEFAULT_HASH, character_types=None, salt = None):
         self.check_arguments(max_chars, max_processes, target_hash)
         final_char_set = get_file_characters(CONFIG_FILEPATH)
 
@@ -27,11 +30,13 @@ class PasswordCracker:
         self.max_chars = max_chars
         self.max_processes = max_processes
         self.hash_target = target_hash.strip().lower()
+        self.salt = salt
 
         for char_set_type in character_types:
             char_set = CHAR_SETS[char_set_type]
             final_char_set |= char_set
         self.final_char_set = list(final_char_set)
+
 
         self.finish_flag = multiprocessing.Value('i', 0)
         self.final_password = multiprocessing.Array('c', THEORETICAL_MAX_PASSWORD_LENGTH)
@@ -95,10 +100,10 @@ class PasswordCracker:
                 if counter >= 300000:
                     counter = 0
                     #print(self.get_password_from_index_list(password_index_list) + "////start:" +  str(self.final_char_set[tasks[1]]) + "/end:" + str(self.final_char_set[tasks[2]-1]))
-                current_password = self.get_password_from_index_list(password_index_list)
+                current_password = self.add_salt(password_index_list)
                 if hashlib.sha384(current_password.encode('utf-8')).hexdigest() == self.hash_target:
                     # Ulozeni do sdilene pameti (musime prevest na bytes)
-                    self.final_password.value = current_password.encode('utf-8')
+                    self.final_password.value = self.get_password_from_index_list(password_index_list).encode('utf-8')
                     self.finish_flag.value = 1 #True
                     return self.get_password_from_index_list(password_index_list)
                 password_index_list = self.increment_index_list(password_index_list)
@@ -146,5 +151,9 @@ class PasswordCracker:
             return self.final_password.value.decode('utf-8')
         #print("Password not found")
         return None
+
+    def add_salt(self, password_index_list):
+        return self.get_password_from_index_list(password_index_list) + self.salt
+
 
 

@@ -37,7 +37,8 @@ def check_positive_number(value_str):
 if __name__ == "__main__":
 
     check_arguments()
-    password_cracker = password_cracker.PasswordCracker(max_chars = int(sys.argv[1]), max_processes = int(sys.argv[2]), target_hash = sys.argv[3], character_types = sys.argv[4:])
+    # TODO implement feature where user can specify salt, salt in next line is only for testing reasons
+    password_cracker = password_cracker.PasswordCracker(max_chars = int(sys.argv[1]), max_processes = int(sys.argv[2]), target_hash = sys.argv[3], character_types = sys.argv[4:], salt = "ThisIsSalt")
     password_cracker.process_manager()
 
     result = password_cracker.get_result()
